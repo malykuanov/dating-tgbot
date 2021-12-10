@@ -98,3 +98,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATICFILES_DIRS = []
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+TELEGRAM_TOKEN = env('TELEGRAM_TOKEN')
+TELEGRAM_URL = 'https://api.telegram.org/bot'
