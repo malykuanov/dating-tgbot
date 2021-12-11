@@ -44,3 +44,7 @@ class Profile(models.Model):
         blank=True,
         verbose_name='О себе'
     )
+
+    class Meta:
+        verbose_name = "Профиль"
+        verbose_name_plural = "Профили"
