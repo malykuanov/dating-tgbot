@@ -3,6 +3,7 @@ from django.db import models
 
 class User(models.Model):
     chat_id = models.IntegerField(
+        primary_key=True,
         verbose_name='Chat id пользователя'
     )
     first_name = models.CharField(
@@ -23,7 +24,7 @@ class User(models.Model):
 
 
 class Profile(models.Model):
-    user_profile = models.OneToOneField(
+    user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         primary_key=True,
@@ -54,4 +55,4 @@ class Profile(models.Model):
         verbose_name_plural = "Профили"
 
     def __str__(self):
-        return str(self.user_profile)
+        return str(self.user)
