@@ -17,3 +17,26 @@ class User(models.Model):
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
+
+
+class Profile(models.Model):
+    user_profile = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+    name = models.CharField(
+        max_length=20,
+        verbose_name='Имя'
+    )
+    age = models.IntegerField(
+        verbose_name='Возраст'
+    )
+    city = models.CharField(
+        max_length=30,
+        verbose_name='Город'
+    )
+    description = models.CharField(
+        max_length=120,
+        verbose_name='О себе'
+    )
