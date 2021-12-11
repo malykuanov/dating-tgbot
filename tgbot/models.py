@@ -18,6 +18,9 @@ class User(models.Model):
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
 
+    def __str__(self):
+        return str(self.chat_id)
+
 
 class Profile(models.Model):
     user_profile = models.OneToOneField(
@@ -49,3 +52,6 @@ class Profile(models.Model):
     class Meta:
         verbose_name = "Профиль"
         verbose_name_plural = "Профили"
+
+    def __str__(self):
+        return str(self.user_profile)
