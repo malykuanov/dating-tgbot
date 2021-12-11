@@ -27,16 +27,20 @@ class Profile(models.Model):
     )
     name = models.CharField(
         max_length=20,
+        blank=True,
         verbose_name='Имя'
     )
     age = models.IntegerField(
+        blank=True,
         verbose_name='Возраст'
     )
     city = models.CharField(
         max_length=30,
+        blank=True,
         verbose_name='Город'
     )
     description = models.CharField(
         max_length=120,
+        blank=True,
         verbose_name='О себе'
     )
