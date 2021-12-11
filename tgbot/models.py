@@ -32,6 +32,7 @@ class Profile(models.Model):
     )
     age = models.IntegerField(
         blank=True,
+        null=True,
         verbose_name='Возраст'
     )
     city = models.CharField(
