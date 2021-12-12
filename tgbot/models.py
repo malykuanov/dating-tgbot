@@ -50,7 +50,7 @@ class Profile(models.Model):
         verbose_name='Город'
     )
     description = models.CharField(
-        max_length=120,
+        max_length=400,
         blank=True,
         verbose_name='О себе'
     )
