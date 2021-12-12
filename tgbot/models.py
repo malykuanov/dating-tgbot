@@ -39,6 +39,11 @@ class Profile(models.Model):
         null=True,
         verbose_name='Возраст'
     )
+    sex = models.CharField(
+        max_length=1,
+        blank=True,
+        verbose_name='Пол'
+    )
     city = models.CharField(
         max_length=30,
         blank=True,
