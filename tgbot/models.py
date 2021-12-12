@@ -45,7 +45,7 @@ class Profile(models.Model):
         verbose_name='Пол'
     )
     city = models.CharField(
-        max_length=30,
+        max_length=100,
         blank=True,
         verbose_name='Город'
     )
