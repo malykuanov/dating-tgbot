@@ -54,6 +54,11 @@ class Profile(models.Model):
         blank=True,
         verbose_name='О себе'
     )
+    avatar = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name='Фото пользователя'
+    )
 
     class Meta:
         verbose_name = "Профиль"
