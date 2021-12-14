@@ -101,3 +101,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 TELEGRAM_TOKEN = env('TELEGRAM_TOKEN')
 TELEGRAM_URL = 'https://api.telegram.org/bot'
+TELEGRAM_WEBHOOK_URL = env('TELEGRAM_WEBHOOK_URL')
