@@ -1,9 +1,13 @@
 from telebot import types
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.views import View
 
 from .handlers import bot
+
+bot.remove_webhook()
+bot.set_webhook(url=f"{settings.TELEGRAM_WEBHOOK_URL}/webhook/tgbot")
 
 
 class TelegramBotWebhookView(View):
