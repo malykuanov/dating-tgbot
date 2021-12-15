@@ -71,6 +71,8 @@ class Profile(models.Model):
     city = models.OneToOneField(
         City,
         on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True
     )
     description = models.CharField(
         max_length=400,
