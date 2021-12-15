@@ -16,11 +16,35 @@ class User(models.Model):
     )
 
     class Meta:
-        verbose_name = "Пользователь"
-        verbose_name_plural = "Пользователи"
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def __str__(self):
         return str(self.chat_id)
+
+
+class City(models.Model):
+    name = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name='Наименование н/п'
+    )
+    region = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name='Регион'
+    )
+    is_basic = models.BooleanField(
+        default=True,
+        verbose_name='В базовом списке?'
+    )
+
+    class Meta:
+        verbose_name = 'Город'
+        verbose_name_plural = 'Города'
+
+    def __str__(self):
+        return str(f'{self.name}, {self.region}')
 
 
 class Profile(models.Model):
@@ -44,10 +68,9 @@ class Profile(models.Model):
         blank=True,
         verbose_name='Пол'
     )
-    city = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name='Город'
+    city = models.OneToOneField(
+        City,
+        on_delete=models.DO_NOTHING,
     )
     description = models.CharField(
         max_length=400,
@@ -61,8 +84,8 @@ class Profile(models.Model):
     )
 
     class Meta:
-        verbose_name = "Профиль"
-        verbose_name_plural = "Профили"
+        verbose_name = 'Профиль'
+        verbose_name_plural = 'Профили'
 
     def __str__(self):
         return str(self.user)
