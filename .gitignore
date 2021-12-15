@@ -145,3 +145,7 @@ cython_debug/
 
 #nginx
 /docker/nginx/certs
+
+#tgbot app
+/tgbot/static/
+
