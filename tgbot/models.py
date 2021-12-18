@@ -84,6 +84,10 @@ class Profile(models.Model):
         blank=True,
         verbose_name='Фото пользователя'
     )
+    is_registered = models.BooleanField(
+        default=False,
+        verbose_name='Анкета зарегистрирована?'
+    )
 
     class Meta:
         verbose_name = 'Профиль'
