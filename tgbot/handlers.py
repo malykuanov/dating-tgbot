@@ -281,6 +281,7 @@ def process_photo_step(message, user):
         file_id = message.photo[-1].file_id
         file = bot.get_file(file_id)
         user.profile.avatar = file.file_path
+        user.profile.is_registered = True
         user.profile.save()
 
         text = '<b>Поздравляем!!!</b> Ваша анкета успешно создана\n'
@@ -371,14 +372,22 @@ def callback_change_profile(call):
             chat_id=call.from_user.id,
             message_id=call.message.message_id
         )
-
         text = ""
+        user = User.objects.get(chat_id=call.from_user.id)
+
+        if call.data == 'profile_registration':
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text="Как вас зовут?"
+            )
+            bot.register_next_step_handler(call.message, process_name_step,
+                                           user)
+            return
         if call.data == 'profile_save':
             text = "Ура😌"
         elif call.data == 'profile_delete':
             text = "Ваша анкета успешно удалена!\n"
             text += "Для создания новой анкеты: /start"
-            user = User.objects.get(chat_id=call.from_user.id)
             user.delete()
 
         bot.edit_message_text(
