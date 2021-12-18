@@ -34,14 +34,6 @@ def gen_markup_for_city(name):
 
 
 def get_user_avatar(user):
-    if user.profile.avatar == "":
-        no_avatar_path = os.path.join(
-            settings.STATIC_ROOT, 'tgbot/images/no-ava-image.jpg'
-        )
-        with open(no_avatar_path, "rb") as img:
-            avatar = img.read()
-            return avatar
-
     user_avatar = bot.download_file(user.profile.avatar)
     save_path = os.path.join(settings.MEDIA_ROOT, 'images/avatars/')
     file_name = f"{user.chat_id}.jpg"
@@ -91,17 +83,19 @@ def start_message(message):
         with open(sticker_path, 'rb') as sticker:
             bot.send_sticker(message.chat.id, sticker.read())
         user, created = User.objects.get_or_create(chat_id=message.chat.id)
-        if created:
+        if created or not user.profile.is_registered:
             user.first_name = message.chat.first_name
             user.username = message.chat.username
             user.save()
-            profile = Profile.objects.create(user=user)
+            profile, _ = Profile.objects.get_or_create(user=user)
             text = '<b>Приветик☺</b>\n\n'
-            text += 'Чтобы начать использовать бота, необходимо завести анкету.\n'
+            text += 'Чтобы начать знакомства, необходимо завести анкету.\n'
 
-            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            item1 = types.KeyboardButton(text="❤️Регистрация анкеты")
-            markup.add(item1)
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton(
+                f"❤️Регистрация анкеты",
+                callback_data="profile_registration"
+            ))
 
             bot.send_message(
                 chat_id=message.chat.id,
@@ -117,7 +111,13 @@ def start_message(message):
 def show_user_profile(message):
     try:
         user = User.objects.get(chat_id=message.chat.id)
-        get_user_profile(user)
+        if user.profile.is_registered:
+            get_user_profile(user)
+        else:
+            bot.send_message(
+                chat_id=message.chat.id,
+                text="Вы не завершили регистрацию!\nВоспользуйтесь командой:\n/start"
+            )
     except User.DoesNotExist as ex:
         bot.send_message(
             chat_id=message.chat.id,
