@@ -165,15 +165,9 @@ def delete_profile(message):
 
 @bot.message_handler(content_types=['text'])
 def bot_message(message):
-    if message.chat.type == 'private':
-        if message.text == '❤️Регистрация пользователя':
-            bot.send_message(
-                chat_id=message.chat.id,
-                text="Как вас зовут?",
-                reply_markup=types.ReplyKeyboardRemove()
-            )
-            user = User.objects.get(chat_id=message.chat.id)
-            bot.register_next_step_handler(message, process_name_step, user)
+    #if message.chat.type == 'private':
+    #    if message.text == '':
+    pass
 
 
 def process_name_step(message, user):
