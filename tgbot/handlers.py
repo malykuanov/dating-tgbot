@@ -66,6 +66,12 @@ def gen_markup_for_profile():
             callback_data="profile_edit_avatar"
         )
     )
+    markup.add(
+        types.InlineKeyboardButton(
+            f"🚫Удаление профиля",
+            callback_data="profile_edit_remove"
+        )
+    )
     return markup
 
 
@@ -164,30 +170,6 @@ def show_user_profile(message):
         bot.send_message(
             chat_id=message.chat.id,
             text="Вы не завели анкету!\nВоспользуйтесь командой:\n/start"
-        )
-    except Exception as ex:
-        logging.error(ex)
-
-
-@bot.message_handler(commands=['delete_me'])
-def delete_profile(message):
-    try:
-        text = '<b>Вы точно хотите удалить анкету❓</b>\n'
-        markup = types.InlineKeyboardMarkup()
-        markup.row_width = 2
-        markup.add(types.InlineKeyboardButton(
-            text="❌Удалить анкету",
-            callback_data="profile_delete"
-        ))
-        markup.add(types.InlineKeyboardButton(
-            text="☺Я остаюсь!",
-            callback_data="profile_save"
-        ))
-        bot.send_message(
-            chat_id=message.chat.id,
-            text=text,
-            reply_markup=markup,
-            parse_mode='HTML'
         )
     except Exception as ex:
         logging.error(ex)
@@ -495,6 +477,26 @@ def callback_change_profile(call):
             )
             bot.register_next_step_handler(call.message, process_photo_step,
                                            user)
+            bot.answer_callback_query(call.id)
+            return
+        if call.data == 'profile_edit_remove':
+            text = '<b>Вы точно хотите удалить анкету❓</b>\n'
+            markup = types.InlineKeyboardMarkup()
+            markup.row_width = 2
+            markup.add(types.InlineKeyboardButton(
+                text="❌Удалить анкету",
+                callback_data="profile_delete"
+            ))
+            markup.add(types.InlineKeyboardButton(
+                text="☺Я остаюсь!",
+                callback_data="profile_save"
+            ))
+            bot.send_message(
+                chat_id=call.message.chat.id,
+                text=text,
+                reply_markup=markup,
+                parse_mode='HTML'
+            )
             bot.answer_callback_query(call.id)
             return
         if call.data == 'profile_save':
