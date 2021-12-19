@@ -68,7 +68,7 @@ class Profile(models.Model):
         blank=True,
         verbose_name='Пол'
     )
-    city = models.OneToOneField(
+    city = models.ForeignKey(
         City,
         on_delete=models.DO_NOTHING,
         null=True,
