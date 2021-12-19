@@ -224,8 +224,12 @@ def process_name_step(message, user):
             return
         user.profile.name = name
         user.profile.save()
-        message = bot.reply_to(message, 'Сколько вам лет?')
-        bot.register_next_step_handler(message, process_age_step, user)
+        bot.send_message(chat_id=message.chat.id, text='Имя установлено!')
+        if user.profile.is_registered:
+            show_user_profile(message)
+        else:
+            message = bot.reply_to(message, 'Сколько вам лет?')
+            bot.register_next_step_handler(message, process_age_step, user)
     except Exception as ex:
         logging.error(ex)
 
@@ -242,11 +246,15 @@ def process_age_step(message, user):
             return
         user.profile.age = age
         user.profile.save()
-        markup = types.ReplyKeyboardMarkup(one_time_keyboard=True,
-                                           resize_keyboard=True)
-        markup.add('🕺Мужчина', '💃🏽Женщина')
-        message = bot.reply_to(message, 'Укажите ваш пол', reply_markup=markup)
-        bot.register_next_step_handler(message, process_sex_step, user)
+        bot.send_message(chat_id=message.chat.id, text='Возраст установлен!')
+        if user.profile.is_registered:
+            show_user_profile(message)
+        else:
+            markup = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                               resize_keyboard=True)
+            markup.add('Мужчина', 'Женщина')
+            message = bot.reply_to(message, 'Укажите ваш пол', reply_markup=markup)
+            bot.register_next_step_handler(message, process_sex_step, user)
     except Exception as ex:
         logging.error(ex)
 
@@ -254,24 +262,28 @@ def process_age_step(message, user):
 def process_sex_step(message, user):
     try:
         sex = message.text
-        if sex == '🕺Мужчина':
+        if sex == 'Мужчина':
             user.profile.sex = 'M'
-        elif sex == '💃🏽Женщина':
+        elif sex == 'Женщина':
             user.profile.sex = 'F'
         else:
             message = bot.reply_to(
                 message=message,
-                text='Выберите пол из предложенных вариантов'
+                text='Выберите пол из предложенных вариантов (Мужчина / Женщина)'
             )
             bot.register_next_step_handler(message, process_sex_step, user)
             return
         user.profile.save()
-        message = bot.send_message(
-            chat_id=message.chat.id,
-            text='Укажите ваш город',
-            reply_markup=types.ReplyKeyboardRemove()
-        )
-        bot.register_next_step_handler(message, process_city_step, user)
+        bot.send_message(chat_id=message.chat.id, text='Пол установлен!')
+        if user.profile.is_registered:
+            show_user_profile(message)
+        else:
+            message = bot.send_message(
+                chat_id=message.chat.id,
+                text='Укажите ваш город',
+                reply_markup=types.ReplyKeyboardRemove()
+            )
+            bot.register_next_step_handler(message, process_city_step, user)
     except Exception as ex:
         logging.error(ex)
 
@@ -306,8 +318,12 @@ def process_description_step(message, user):
             return
         user.profile.description = description
         user.profile.save()
-        message = bot.reply_to(message, 'Пришлите ваше фото')
-        bot.register_next_step_handler(message, process_photo_step, user)
+        bot.send_message(chat_id=message.chat.id, text='Описание установлено!')
+        if user.profile.is_registered:
+            show_user_profile(message)
+        else:
+            message = bot.reply_to(message, 'Пришлите ваше фото')
+            bot.register_next_step_handler(message, process_photo_step, user)
     except Exception as ex:
         logging.error(ex)
 
@@ -317,17 +333,21 @@ def process_photo_step(message, user):
         file_id = message.photo[-1].file_id
         file = bot.get_file(file_id)
         user.profile.avatar = file.file_path
-        user.profile.is_registered = True
         user.profile.save()
-
-        text = '<b>Поздравляем!!!</b> Ваша анкета успешно создана\n'
-        text += 'Для просмотра текущего профиля укажите команду\n'
-        text += '/profile'
-        bot.send_message(
-            chat_id=message.chat.id,
-            text=text,
-            parse_mode='HTML'
-        )
+        bot.send_message(chat_id=message.chat.id, text='Фото установлено!')
+        if user.profile.is_registered:
+            show_user_profile(message)
+        else:
+            user.profile.is_registered = True
+            user.profile.save()
+            text = '<b>Поздравляем!!!</b> Ваша анкета успешно создана\n'
+            text += 'Для просмотра текущего профиля укажите команду\n'
+            text += '/profile'
+            bot.send_message(
+                chat_id=message.chat.id,
+                text=text,
+                parse_mode='HTML'
+            )
     except TypeError:
         message = bot.reply_to(
             message=message,
@@ -382,7 +402,8 @@ def callback_set_city(call):
             user.profile.city = City.objects.get(pk=city_pk)
             user.profile.save()
             text = '<b>Город установлен</b>\n'
-
+            if user.profile.is_registered:
+                show_user_profile(call.message)
         bot.edit_message_text(
             chat_id=call.from_user.id,
             message_id=call.message.message_id,
@@ -391,11 +412,12 @@ def callback_set_city(call):
         )
         bot.answer_callback_query(call.id)
 
-        message = bot.send_message(
-            chat_id=call.from_user.id,
-            text='Укажите описание о себе до 400 сим.'
-        )
-        bot.register_next_step_handler(message, process_description_step, user)
+        if not user.profile.is_registered:
+            message = bot.send_message(
+                chat_id=call.from_user.id,
+                text='Укажите описание о себе до 400 сим.'
+            )
+            bot.register_next_step_handler(message, process_description_step, user)
 
     except Exception as ex:
         logging.error(ex)
@@ -418,6 +440,62 @@ def callback_change_profile(call):
             )
             bot.register_next_step_handler(call.message, process_name_step,
                                            user)
+            bot.answer_callback_query(call.id)
+            return
+
+        if call.data == 'profile_edit_name':
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text="Укажите ваше имя:"
+            )
+            bot.register_next_step_handler(call.message, process_name_step,
+                                           user)
+            bot.answer_callback_query(call.id)
+            return
+        if call.data == 'profile_edit_age':
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text="Укажите ваш возраст:"
+            )
+            bot.register_next_step_handler(call.message, process_age_step,
+                                           user)
+            bot.answer_callback_query(call.id)
+            return
+        if call.data == 'profile_edit_sex':
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text="Укажите ваш пол (Мужчина / Женщина):"
+            )
+            bot.register_next_step_handler(call.message, process_sex_step,
+                                           user)
+            bot.answer_callback_query(call.id)
+            return
+        if call.data == 'profile_edit_city':
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text="Укажите ваш город:"
+            )
+            bot.register_next_step_handler(call.message, process_city_step,
+                                           user)
+            bot.answer_callback_query(call.id)
+            return
+        if call.data == 'profile_edit_description':
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text="Укажите описание:"
+            )
+            bot.register_next_step_handler(call.message, process_description_step,
+                                           user)
+            bot.answer_callback_query(call.id)
+            return
+        if call.data == 'profile_edit_avatar':
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text="Пришлите ваше фото:"
+            )
+            bot.register_next_step_handler(call.message, process_photo_step,
+                                           user)
+            bot.answer_callback_query(call.id)
             return
         if call.data == 'profile_save':
             text = "Ура😌"
