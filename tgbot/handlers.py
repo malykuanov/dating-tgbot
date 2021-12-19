@@ -75,6 +75,20 @@ def gen_markup_for_profile():
     return markup
 
 
+def gen_main_markup():
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row_width = 2
+    markup.add(
+        types.KeyboardButton(f"🔍Поиск"),
+        types.KeyboardButton(f"⚙Настройки поиска")
+    )
+    markup.add(
+        types.KeyboardButton(f"😎Мой профиль")
+    )
+
+    return markup
+
+
 def get_user_avatar(user):
     user_avatar = bot.download_file(user.profile.avatar)
     save_path = os.path.join(settings.MEDIA_ROOT, 'images/avatars/')
@@ -143,6 +157,13 @@ def start_message(message):
                 chat_id=message.chat.id,
                 text=text,
                 reply_markup=markup,
+                parse_mode='HTML'
+            )
+        else:
+            bot.send_message(
+                chat_id=message.chat.id,
+                text="Ку-ку🙂",
+                reply_markup=gen_main_markup(),
                 parse_mode='HTML'
             )
     except Exception as ex:
@@ -324,10 +345,11 @@ def process_photo_step(message, user):
             user.profile.save()
             text = '<b>Поздравляем!!!</b> Ваша анкета успешно создана\n'
             text += 'Для просмотра текущего профиля укажите команду\n'
-            text += '/profile'
+            text += '/profile или воспользуйтесь кнопкой "Мой профиль"'
             bot.send_message(
                 chat_id=message.chat.id,
                 text=text,
+                reply_markup=gen_main_markup(),
                 parse_mode='HTML'
             )
     except TypeError:
