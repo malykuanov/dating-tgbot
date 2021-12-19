@@ -33,6 +33,42 @@ def gen_markup_for_city(name):
     return markup
 
 
+def gen_markup_for_profile():
+    markup = types.InlineKeyboardMarkup()
+    markup.row_width = 2
+    markup.add(
+        types.InlineKeyboardButton(
+            f"👤Имя",
+            callback_data="profile_edit_name"
+        ),
+        types.InlineKeyboardButton(
+            f"🔢Возраст",
+            callback_data="profile_edit_age"
+        )
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            f"🚹Пол",
+            callback_data="profile_edit_sex"
+        ),
+        types.InlineKeyboardButton(
+            f"🏠Город",
+            callback_data="profile_edit_city"
+        )
+    )
+    markup.add(
+        types.InlineKeyboardButton(
+            f"🖌️Описание",
+            callback_data="profile_edit_description"
+        ),
+        types.InlineKeyboardButton(
+            f"🖼Фото",
+            callback_data="profile_edit_avatar"
+        )
+    )
+    return markup
+
+
 def get_user_avatar(user):
     user_avatar = bot.download_file(user.profile.avatar)
     save_path = os.path.join(settings.MEDIA_ROOT, 'images/avatars/')
@@ -113,6 +149,12 @@ def show_user_profile(message):
         user = User.objects.get(chat_id=message.chat.id)
         if user.profile.is_registered:
             get_user_profile(user)
+            bot.send_message(
+                chat_id=message.chat.id,
+                text="Вы можете изменить параметры профиля:",
+                reply_markup=gen_markup_for_profile(),
+                parse_mode='HTML'
+            )
         else:
             bot.send_message(
                 chat_id=message.chat.id,
@@ -165,7 +207,7 @@ def delete_profile(message):
 
 @bot.message_handler(content_types=['text'])
 def bot_message(message):
-    #if message.chat.type == 'private':
+    # if message.chat.type == 'private':
     #    if message.text == '':
     pass
 
