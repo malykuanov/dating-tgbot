@@ -7,7 +7,7 @@ from telebot import types
 
 from django.conf import settings
 
-from .models import City, Profile, User
+from .models import City, Profile, ProfileSearch, User
 
 bot = telebot.TeleBot(settings.TELEGRAM_TOKEN)
 
@@ -125,6 +125,25 @@ def get_user_profile(user):
     )
 
 
+def get_user_profile_search(user):
+    text = f'<i>Ваши настроки для поиска собеседника</i>: \n'
+    text += f'<b>🔢Возраст: </b>{user.profilesearch.age}\n'
+    if user.profilesearch.sex == 'M':
+        text += f'<b>🚹Пол: </b> Мужчина\n'
+    else:
+        text += f'<b>🚺Пол: </b> Женщина\n'
+    if user.profile.city is None:
+        text += f'<b>🏠Город: </b>Не установлен\n'
+    else:
+        text += f'<b>🏠Город: </b>{user.profilesearch.city}\n'
+
+    bot.send_message(
+        chat_id=user.chat_id,
+        text=text,
+        parse_mode='HTML'
+    )
+
+
 @bot.message_handler(commands=['test'])
 def test_command(message):
     pass
@@ -144,6 +163,7 @@ def start_message(message):
             user.username = message.chat.username
             user.save()
             profile, _ = Profile.objects.get_or_create(user=user)
+            profile_search, _ = ProfileSearch.objects.get_or_create(user=user)
             text = '<b>Приветик☺</b>\n\n'
             text += 'Чтобы начать знакомства, необходимо завести анкету.\n'
 
@@ -210,9 +230,12 @@ def delete_profile(message):
 
 @bot.message_handler(content_types=['text'])
 def bot_message(message):
-    # if message.chat.type == 'private':
-    #    if message.text == '':
-    pass
+    if message.chat.type == 'private':
+        if message.text == '😎Мой профиль':
+            show_user_profile(message)
+        if message.text == '⚙Настройки поиска':
+            user = User.objects.get(chat_id=message.chat.id)
+            get_user_profile_search(user)
 
 
 def process_name_step(message, user):
@@ -267,8 +290,10 @@ def process_sex_step(message, user):
         sex = message.text
         if sex == 'Мужчина':
             user.profile.sex = 'M'
+            user.profilesearch.sex = 'F'
         elif sex == 'Женщина':
             user.profile.sex = 'F'
+            user.profilesearch.sex = 'M'
         else:
             message = bot.reply_to(
                 message=message,
@@ -277,6 +302,7 @@ def process_sex_step(message, user):
             bot.register_next_step_handler(message, process_sex_step, user)
             return
         user.profile.save()
+        user.profilesearch.save()
         bot.send_message(chat_id=message.chat.id, text='Пол установлен!')
         if user.profile.is_registered:
             show_user_profile(message)
@@ -404,6 +430,8 @@ def callback_set_city(call):
         else:
             city_pk = call.data.split('_')[-1]
             user.profile.city = City.objects.get(pk=city_pk)
+            user.profilesearch.city = user.profile.city
+            user.profilesearch.save()
             user.profile.save()
             text = '<b>Город установлен</b>\n'
             if user.profile.is_registered:

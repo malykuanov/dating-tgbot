@@ -95,3 +95,34 @@ class Profile(models.Model):
 
     def __str__(self):
         return str(self.user)
+
+
+class ProfileSearch(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        primary_key=True,
+    )
+    age = models.CharField(
+        max_length=10,
+        default='18-100',
+        verbose_name='Возраст собеседника'
+    )
+    sex = models.CharField(
+        max_length=1,
+        default='F',
+        verbose_name='Пол собеседника'
+    )
+    city = models.ForeignKey(
+        City,
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        verbose_name = 'Профиль для поиска'
+        verbose_name_plural = 'Профили для поиска'
+
+    def __str__(self):
+        return str(self.user)
