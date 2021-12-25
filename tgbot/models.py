@@ -75,14 +75,13 @@ class Profile(models.Model):
         blank=True,
         verbose_name='О себе'
     )
-    avatar = models.CharField(
-        max_length=100,
-        blank=True,
-        verbose_name='Фото пользователя'
-    )
     is_registered = models.BooleanField(
         default=False,
         verbose_name='Анкета зарегистрирована?'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Анкета активна?'
     )
 
     class Meta:
