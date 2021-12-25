@@ -34,10 +34,6 @@ class City(models.Model):
         blank=True,
         verbose_name='Регион'
     )
-    is_basic = models.BooleanField(
-        default=True,
-        verbose_name='В базовом списке?'
-    )
 
     class Meta:
         verbose_name = 'Город'
