@@ -100,7 +100,7 @@ class ProfileSearch(models.Model):
     )
     age = models.CharField(
         max_length=10,
-        default='12-100',
+        default='13-100',
         verbose_name='Возраст собеседника'
     )
     sex = models.CharField(
