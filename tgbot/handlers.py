@@ -114,12 +114,14 @@ def get_user_profile(user):
         text += f'<b>🏠Город: </b>Не установлен\n'
     else:
         text += f'<b>🏠Город: </b>{user.profile.city}\n'
-    text += f'<b>🖌️Описание: </b>{user.profile.description}\n'
-
+    text += f'<b>🖌️Описание: </b>{user.profile.description}\n\n'
+    text += '<i>Так выглядит ваш профиль</i>\n'
+    text += 'Вы можете изменить следующие параметры:'
     bot.send_photo(
         chat_id=user.chat_id,
         photo=get_user_avatar(user),
         caption=text,
+        reply_markup=gen_markup_for_profile(user),
         parse_mode='HTML'
     )
 
@@ -211,12 +213,6 @@ def show_user_profile(message):
         user = User.objects.get(chat_id=message.chat.id)
         if user.profile.is_registered:
             get_user_profile(user)
-            bot.send_message(
-                chat_id=message.chat.id,
-                text="Вы можете изменить параметры профиля:",
-                reply_markup=gen_markup_for_profile(user),
-                parse_mode='HTML'
-            )
         else:
             bot.send_message(
                 chat_id=message.chat.id,
