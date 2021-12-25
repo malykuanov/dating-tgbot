@@ -33,7 +33,7 @@ def gen_markup_for_city(name):
     return markup
 
 
-def gen_markup_for_profile():
+def gen_markup_for_profile(user):
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
     markup.add(
@@ -66,10 +66,14 @@ def gen_markup_for_profile():
             callback_data="profile_edit_avatar"
         )
     )
+    if user.profile.is_active:
+        text_active = '✅Анкета активна'
+    else:
+        text_active = '⛔Анкета не активна'
     markup.add(
         types.InlineKeyboardButton(
-            f"🚫Удаление профиля",
-            callback_data="profile_edit_remove"
+            text=text_active,
+            callback_data="profile_edit_active"
         )
     )
     return markup
@@ -210,7 +214,7 @@ def show_user_profile(message):
             bot.send_message(
                 chat_id=message.chat.id,
                 text="Вы можете изменить параметры профиля:",
-                reply_markup=gen_markup_for_profile(),
+                reply_markup=gen_markup_for_profile(user),
                 parse_mode='HTML'
             )
         else:
@@ -553,39 +557,12 @@ def callback_change_profile(call):
                                            user)
             bot.answer_callback_query(call.id)
             return
-        if call.data == 'profile_edit_remove':
-            text = '<b>Вы точно хотите удалить анкету❓</b>\n'
-            markup = types.InlineKeyboardMarkup()
-            markup.row_width = 2
-            markup.add(types.InlineKeyboardButton(
-                text="❌Удалить анкету",
-                callback_data="profile_delete"
-            ))
-            markup.add(types.InlineKeyboardButton(
-                text="☺Я остаюсь!",
-                callback_data="profile_save"
-            ))
-            bot.send_message(
-                chat_id=call.message.chat.id,
-                text=text,
-                reply_markup=markup,
-                parse_mode='HTML'
-            )
-            bot.answer_callback_query(call.id)
+        if call.data == 'profile_edit_active':
+            user.profile.is_active = not user.profile.is_active
+            user.profile.save()
+            show_user_profile(call.message)
+            bot.answer_callback_query(call.id, 'Статус анкеты изменен')
             return
-        if call.data == 'profile_save':
-            text = "Ура😌"
-        elif call.data == 'profile_delete':
-            text = "Ваша анкета успешно удалена!\n"
-            text += "Для создания новой анкеты: /start"
-            user.delete()
-
-        bot.edit_message_text(
-            chat_id=call.from_user.id,
-            message_id=call.message.message_id,
-            text=text
-        )
-        bot.answer_callback_query(call.id)
 
     except User.DoesNotExist:
         bot.edit_message_text(
