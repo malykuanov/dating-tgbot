@@ -90,17 +90,12 @@ def gen_main_markup():
 
 
 def get_user_avatar(user):
-    user_avatar = bot.download_file(user.profile.avatar)
     save_path = os.path.join(settings.MEDIA_ROOT, 'images/avatars/')
     file_name = f"{user.chat_id}.jpg"
     complete_name = os.path.join(save_path, file_name)
 
-    with open(complete_name, "wb") as img:
-        img.write(user_avatar)
     with open(complete_name, "rb") as img:
         avatar = img.read()
-        if os.path.isfile(complete_name):
-            os.remove(complete_name)
         return avatar
 
 
@@ -378,9 +373,16 @@ def process_photo_step(message, user):
     try:
         file_id = message.photo[-1].file_id
         file = bot.get_file(file_id)
-        user.profile.avatar = file.file_path
-        user.profile.save()
+        user_avatar = bot.download_file(file.file_path)
+        save_path = os.path.join(settings.MEDIA_ROOT, 'images/avatars/')
+        file_name = f"{user.chat_id}.jpg"
+        complete_name = os.path.join(save_path, file_name)
+
+        with open(complete_name, "wb") as img:
+            img.write(user_avatar)
+
         bot.send_message(chat_id=message.chat.id, text='Фото установлено!')
+
         if user.profile.is_registered:
             show_user_profile(message)
         else:
