@@ -126,7 +126,7 @@ def get_user_profile(user):
 
 
 def get_user_profile_search(user):
-    text = f'<i>Ваши настроки для поиска собеседника</i>: \n'
+    text = f'<i>Ваши настроки для поиска собеседника</i>: \n\n'
     text += f'<b>🔢Возраст: </b>{user.profilesearch.age}\n'
     if user.profilesearch.sex == 'M':
         text += f'<b>🚹Пол: </b> Мужчина\n'
@@ -135,11 +135,27 @@ def get_user_profile_search(user):
     if user.profile.city is None:
         text += f'<b>🏠Город: </b>Не установлен\n'
     else:
-        text += f'<b>🏠Город: </b>{user.profilesearch.city}\n'
+        text += f'<b>🏠Город: </b>{user.profilesearch.city}\n\n'
+    text += 'Вы можете изменить настройки поиска: '
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(
+        f"Изменить возраст",
+        callback_data="search_age"
+    ))
+    markup.add(types.InlineKeyboardButton(
+        f"Изменить пол",
+        callback_data="search_sex"
+    ))
+    markup.add(types.InlineKeyboardButton(
+        f"Изменить город",
+        callback_data="search_city"
+    ))
 
     bot.send_message(
         chat_id=user.chat_id,
         text=text,
+        reply_markup=markup,
         parse_mode='HTML'
     )
 
@@ -279,7 +295,8 @@ def process_age_step(message, user):
             markup = types.ReplyKeyboardMarkup(one_time_keyboard=True,
                                                resize_keyboard=True)
             markup.add('Мужчина', 'Женщина')
-            message = bot.reply_to(message, 'Укажите ваш пол', reply_markup=markup)
+            message = bot.reply_to(message, 'Укажите ваш пол',
+                                   reply_markup=markup)
             bot.register_next_step_handler(message, process_sex_step, user)
     except Exception as ex:
         logging.error(ex)
@@ -449,7 +466,8 @@ def callback_set_city(call):
                 chat_id=call.from_user.id,
                 text='Укажите описание о себе до 400 сим.'
             )
-            bot.register_next_step_handler(message, process_description_step, user)
+            bot.register_next_step_handler(message, process_description_step,
+                                           user)
 
     except Exception as ex:
         logging.error(ex)
@@ -516,7 +534,8 @@ def callback_change_profile(call):
                 chat_id=call.from_user.id,
                 text="Укажите описание:"
             )
-            bot.register_next_step_handler(call.message, process_description_step,
+            bot.register_next_step_handler(call.message,
+                                           process_description_step,
                                            user)
             bot.answer_callback_query(call.id)
             return
