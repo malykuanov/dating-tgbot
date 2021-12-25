@@ -431,10 +431,7 @@ def callback_set_city(call):
 
         user = User.objects.get(chat_id=call.from_user.id)
         text = ""
-        if call.data == 'city_empty':
-            text = 'После регистрации <b>свяжитесь с администратором бота</b>\n'
-            text += 'Для этого воспользутей командой /bug и сообщите о проблеме'
-        elif call.data == 'city_mistake':
+        if call.data == 'city_mistake':
             text = 'Упс, бывает ...'
             bot.edit_message_text(
                 chat_id=call.from_user.id,
@@ -447,12 +444,18 @@ def callback_set_city(call):
             bot.register_next_step_handler(message, process_city_step, user)
             return
         else:
-            city_pk = call.data.split('_')[-1]
-            user.profile.city = City.objects.get(pk=city_pk)
+            if call.data == 'city_empty':
+                text = 'После регистрации <b>свяжитесь с администратором бота</b>\n'
+                text += 'Для этого воспользутей командой /bug и сообщите о проблеме'
+                user.profile.city = City.objects.get(name='Город не установлен')
+            else:
+                city_pk = call.data.split('_')[-1]
+                user.profile.city = City.objects.get(pk=city_pk)
+                text = '<b>Город установлен</b>\n'
             user.profilesearch.city = user.profile.city
             user.profilesearch.save()
             user.profile.save()
-            text = '<b>Город установлен</b>\n'
+
             if user.profile.is_registered:
                 show_user_profile(call.message)
         bot.edit_message_text(
