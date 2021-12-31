@@ -1,3 +1,4 @@
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 
@@ -113,6 +114,16 @@ class ProfileSearch(models.Model):
         City,
         on_delete=models.DO_NOTHING,
         null=True,
+        blank=True
+    )
+    unviewed = ArrayField(
+        models.CharField(max_length=128),
+        default=list,
+        blank=True
+    )
+    viewed = ArrayField(
+        models.CharField(max_length=128),
+        default=list,
         blank=True
     )
 
