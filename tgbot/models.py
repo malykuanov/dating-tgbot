@@ -2,8 +2,9 @@ from django.db import models
 
 
 class User(models.Model):
-    chat_id = models.IntegerField(
+    chat_id = models.CharField(
         primary_key=True,
+        max_length=128,
         verbose_name='Chat id пользователя'
     )
     first_name = models.CharField(
