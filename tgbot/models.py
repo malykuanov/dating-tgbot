@@ -116,12 +116,12 @@ class ProfileSearch(models.Model):
         blank=True
     )
     unviewed = ArrayField(
-        models.CharField(max_length=128),
+        models.IntegerField(),
         default=list,
         blank=True
     )
     viewed = ArrayField(
-        models.CharField(max_length=128),
+        models.IntegerField(),
         default=list,
         blank=True
     )
