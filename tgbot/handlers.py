@@ -321,7 +321,7 @@ def process_name_step(message, user):
 def process_age_step(message, user):
     try:
         age = message.text
-        if not age.isdigit() or not 18 <= int(age) <= 100:
+        if not age.isdigit() or not 13 <= int(age) <= 100:
             message = bot.reply_to(
                 message=message,
                 text='Укажите возраст цифрами от 13 до 100'
