@@ -12,23 +12,20 @@ from .models import City, Profile, ProfileSearch, User
 bot = telebot.TeleBot(settings.TELEGRAM_TOKEN)
 
 
-def gen_markup_for_city(name):
+def gen_markup_for_city(name, is_search):
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
     cities = City.objects.all()
     for city in cities:
         if SequenceMatcher(None, name, city.name).ratio() > 0.8:
+            callback = 'search_' if is_search else ''
             markup.add(types.InlineKeyboardButton(
                 f"{city.name}, {city.region}",
-                callback_data=f"city_{city.pk}"
+                callback_data=f"city_{callback}{city.pk}"
             ))
     markup.add(types.InlineKeyboardButton(
-        f"🤷🏻‍♂️Моего города нет в списке",
+        f"🤷🏻‍♂️Города нет в списке",
         callback_data="city_empty"
-    ))
-    markup.add(types.InlineKeyboardButton(
-        f"🙆🏻 Ошибка при вводе",
-        callback_data="city_mistake"
     ))
     return markup
 
@@ -74,6 +71,70 @@ def gen_markup_for_profile(user):
         types.InlineKeyboardButton(
             text=text_active,
             callback_data="profile_edit_active"
+        )
+    )
+    return markup
+
+
+def gen_markup_for_profile_search():
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(
+        f"Изменить возраст",
+        callback_data="search_age"
+    ))
+    markup.add(types.InlineKeyboardButton(
+        f"Изменить пол",
+        callback_data="search_sex"
+    ))
+    markup.add(types.InlineKeyboardButton(
+        f"Изменить город",
+        callback_data="search_city"
+    ))
+
+    return markup
+
+
+def gen_markup_for_age_search():
+    markup = types.InlineKeyboardMarkup()
+    markup.row_width = 2
+    age_range = [age for age in range(13, 55, 5)]
+    for index in range(0, 8, 2):
+        first_diapason = f'{age_range[index]}-{age_range[index+1]}'
+        second_diapason = f'{age_range[index+1]}-{age_range[index + 2]}'
+        markup.add(
+            types.InlineKeyboardButton(
+                text=first_diapason,
+                callback_data=f'search_age_{first_diapason}'
+            ),
+            types.InlineKeyboardButton(
+                text=second_diapason,
+                callback_data=f'search_age_{second_diapason}'
+            )
+        )
+    markup.add(
+        types.InlineKeyboardButton(
+            text=f'50-100',
+            callback_data=f'search_age_50-100'
+        ),
+        types.InlineKeyboardButton(
+            text='Любой возраст',
+            callback_data=f'search_age_13-100'
+        )
+    )
+    return markup
+
+
+def gen_markup_for_sex_search():
+    markup = types.InlineKeyboardMarkup()
+    markup.row_width = 2
+    markup.add(
+        types.InlineKeyboardButton(
+            text=f'🕺🏻',
+            callback_data=f'search_sex_M'
+        ),
+        types.InlineKeyboardButton(
+            text='💃🏻',
+            callback_data=f'search_sex_F'
         )
     )
     return markup
@@ -139,26 +200,7 @@ def get_user_profile_search(user):
         text += f'<b>🏠Город: </b>{user.profilesearch.city}\n\n'
     text += 'Вы можете изменить настройки поиска: '
 
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton(
-        f"Изменить возраст",
-        callback_data="search_age"
-    ))
-    markup.add(types.InlineKeyboardButton(
-        f"Изменить пол",
-        callback_data="search_sex"
-    ))
-    markup.add(types.InlineKeyboardButton(
-        f"Изменить город",
-        callback_data="search_city"
-    ))
-
-    bot.send_message(
-        chat_id=user.chat_id,
-        text=text,
-        reply_markup=markup,
-        parse_mode='HTML'
-    )
+    return text
 
 
 @bot.message_handler(commands=['test'])
@@ -246,7 +288,12 @@ def bot_message(message):
             show_user_profile(message)
         if message.text == '⚙Настройки поиска':
             user = User.objects.get(chat_id=message.chat.id)
-            get_user_profile_search(user)
+            bot.send_message(
+                chat_id=user.chat_id,
+                text=get_user_profile_search(user),
+                reply_markup=gen_markup_for_profile_search(),
+                parse_mode='HTML'
+            )
 
 
 def process_name_step(message, user):
@@ -277,7 +324,7 @@ def process_age_step(message, user):
         if not age.isdigit() or not 18 <= int(age) <= 100:
             message = bot.reply_to(
                 message=message,
-                text='Укажите возраст цифрами от 18 до 100'
+                text='Укажите возраст цифрами от 13 до 100'
             )
             bot.register_next_step_handler(message, process_age_step, user)
             return
@@ -315,31 +362,37 @@ def process_sex_step(message, user):
             return
         user.profile.save()
         user.profilesearch.save()
-        bot.send_message(chat_id=message.chat.id, text='Пол установлен!')
         if user.profile.is_registered:
-            show_user_profile(message)
+            bot.send_message(
+                chat_id=message.chat.id,
+                text='Пол установлен!',
+                reply_markup=gen_main_markup()
+            )
         else:
+            bot.send_message(
+                chat_id=message.chat.id,
+                text='Пол установлен!',
+                reply_markup=types.ReplyKeyboardRemove()
+            )
             message = bot.send_message(
                 chat_id=message.chat.id,
                 text='Укажите ваш город',
                 reply_markup=types.ReplyKeyboardRemove()
             )
-            bot.register_next_step_handler(message, process_city_step, user)
+            bot.register_next_step_handler(message, process_city_step)
     except Exception as ex:
         logging.error(ex)
 
 
-def process_city_step(message, user):
+def process_city_step(message, is_search=False):
     try:
         city = message.text
         text = '<b>Выберите населенный пункт:</b>\n'
         text += '(в списке предложены н/п с численностью <u>более 1000 ч.</u>)\n\n'
-        text += 'Если вашего н/п нет в списке, выберите пункт:\n'
-        text += '<i>`Моего н/п нет в списке`</i>'
         bot.send_message(
             chat_id=message.chat.id,
             text=text,
-            reply_markup=gen_markup_for_city(city),
+            reply_markup=gen_markup_for_city(city, is_search),
             parse_mode='HTML'
         )
     except Exception as ex:
@@ -431,33 +484,29 @@ def callback_set_city(call):
 
         user = User.objects.get(chat_id=call.from_user.id)
         text = ""
-        if call.data == 'city_mistake':
-            text = 'Упс, бывает ...'
-            bot.edit_message_text(
-                chat_id=call.from_user.id,
-                message_id=call.message.message_id,
-                text=text,
-                parse_mode='HTML'
-            )
-            message = bot.send_message(call.from_user.id,
-                                       'Укажите ваш город')
-            bot.register_next_step_handler(message, process_city_step, user)
-            return
-        else:
-            if call.data == 'city_empty':
-                text = 'После регистрации <b>свяжитесь с администратором бота</b>\n'
-                text += 'Для этого воспользутей командой /bug и сообщите о проблеме'
-                user.profile.city = City.objects.get(name='Город не установлен')
-            else:
-                city_pk = call.data.split('_')[-1]
-                user.profile.city = City.objects.get(pk=city_pk)
-                text = '<b>Город установлен</b>\n'
-            user.profilesearch.city = user.profile.city
-            user.profilesearch.save()
-            user.profile.save()
 
-            if user.profile.is_registered:
-                show_user_profile(call.message)
+        if call.data == 'city_empty':
+            text = 'Пожалуйста, <b>свяжитесь с администратором бота</b>\n'
+            text += 'Для этого воспользутей командой /bug и сообщите о проблеме'
+            if user.profile.city is None:
+                user.profile.city = City.objects.get(name='Город не установлен')
+                user.profilesearch.city = user.profile.city
+        else:
+            city_pk = call.data.split('_')[-1]
+            if call.data.startswith('city_search'):
+                user.profilesearch.city = City.objects.get(pk=city_pk)
+                text = '<b>Город собеседника установлен</b>\n'
+            else:
+                user.profile.city = City.objects.get(pk=city_pk)
+                user.profilesearch.city = user.profile.city
+                text = '<b>Город установлен</b>\n'
+
+                if user.profile.is_registered:
+                    show_user_profile(call.message)
+
+        user.profile.save()
+        user.profilesearch.save()
+
         bot.edit_message_text(
             chat_id=call.from_user.id,
             message_id=call.message.message_id,
@@ -517,9 +566,13 @@ def callback_change_profile(call):
             bot.answer_callback_query(call.id)
             return
         if call.data == 'profile_edit_sex':
+            markup = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                               resize_keyboard=True)
+            markup.add('Мужчина', 'Женщина')
             bot.send_message(
                 chat_id=call.from_user.id,
-                text="Укажите ваш пол (Мужчина / Женщина):"
+                text="Укажите ваш пол:",
+                reply_markup=markup
             )
             bot.register_next_step_handler(call.message, process_sex_step,
                                            user)
@@ -530,8 +583,7 @@ def callback_change_profile(call):
                 chat_id=call.from_user.id,
                 text="Укажите ваш город:"
             )
-            bot.register_next_step_handler(call.message, process_city_step,
-                                           user)
+            bot.register_next_step_handler(call.message, process_city_step)
             bot.answer_callback_query(call.id)
             return
         if call.data == 'profile_edit_description':
@@ -559,6 +611,72 @@ def callback_change_profile(call):
             show_user_profile(call.message)
             bot.answer_callback_query(call.id, 'Статус анкеты изменен')
             return
+
+    except User.DoesNotExist:
+        bot.edit_message_text(
+            chat_id=call.from_user.id,
+            message_id=call.message.message_id,
+            text="Вы не завели анкету!\nВоспользуйтесь командой:\n/start"
+        )
+    except Exception as ex:
+        logging.error(ex)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('search_'))
+def callback_change_profile_search(call):
+    try:
+
+        user = User.objects.get(chat_id=call.from_user.id)
+        text = markup = None
+
+        if call.data == 'search_age':
+            text = '<b>Выберите возрастной диапозон</b>: '
+            markup = gen_markup_for_age_search()
+            bot.answer_callback_query(call.id)
+        if call.data.startswith('search_age_'):
+            user.profilesearch.age = call.data.split('_')[-1]
+            user.profilesearch.save()
+            text = get_user_profile_search(user)
+            markup = gen_markup_for_profile_search()
+
+        if call.data == 'search_sex':
+            text = 'Выберите пол собеседника'
+            markup = gen_markup_for_sex_search()
+        if call.data.startswith('search_sex_'):
+            user.profilesearch.sex = call.data.split('_')[-1]
+            user.profilesearch.save()
+            text = get_user_profile_search(user)
+            markup = gen_markup_for_profile_search()
+
+        if call.data == 'search_city':
+            bot.delete_message(
+                chat_id=call.from_user.id,
+                message_id=call.message.message_id
+            )
+            bot.send_message(
+                chat_id=call.from_user.id,
+                text='<b>Укажите город собеседника:</b> ',
+                parse_mode='HTML'
+            )
+            is_search = True
+            bot.register_next_step_handler(call.message, process_city_step,
+                                           is_search)
+            bot.answer_callback_query(call.id)
+            return
+
+        bot.edit_message_text(
+            text=text,
+            chat_id=call.from_user.id,
+            message_id=call.message.message_id,
+            parse_mode='HTML'
+        )
+        bot.edit_message_reply_markup(
+            chat_id=call.from_user.id,
+            message_id=call.message.message_id,
+            reply_markup=markup
+        )
+        bot.answer_callback_query(call.id)
+        return
 
     except User.DoesNotExist:
         bot.edit_message_text(
