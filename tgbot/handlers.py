@@ -203,8 +203,46 @@ def get_user_profile_search(user):
     return text
 
 
+def get_next_search_profile(client):
+    try:
+        user_id = client.profilesearch.unviewed.pop()
+        user = User.objects.get(chat_id=user_id)
+        text = f'<b>{user.profile.name}, </b>'
+        text += f'{user.profile.age}, '
+        text += f'{user.profile.city.name}\n'
+        text += f'<i>{user.profile.description}</i>'
+        markup = types.InlineKeyboardMarkup()
+        markup.row_width = 1
+        markup.add(
+            types.InlineKeyboardButton(
+                text='💌 Написать',
+                url=f'tg://user?id={user.chat_id}'
+            )
+        )
+        bot.send_photo(
+            chat_id=client.chat_id,
+            photo=get_user_avatar(user),
+            caption=text,
+            reply_markup=markup,
+            parse_mode='HTML'
+        )
+        client.profilesearch.viewed.append(user_id)
+        client.profilesearch.save()
+    except IndexError:
+        text = 'К сожалению, мы никого <b>не нашли</b>\n'
+        text += 'Попробуйте изменить настройки поиска'
+        bot.send_message(
+            chat_id=client.chat_id,
+            text=text,
+            parse_mode='HTML'
+        )
+    except Exception as ex:
+        logging.error(ex)
+
+
 @bot.message_handler(commands=['test'])
 def test_command(message):
+    #text += f'<a href="tg://user?id={user.chat_id}"> ссылка </a>'
     pass
 
 
@@ -294,6 +332,27 @@ def bot_message(message):
                 reply_markup=gen_markup_for_profile_search(),
                 parse_mode='HTML'
             )
+        if message.text == '🔍Поиск':
+            try:
+                client = User.objects.get(chat_id=message.chat.id)
+                if not client.profilesearch.unviewed:
+                    start_age, end_age = map(int, client.profilesearch.age.split('-'))
+                    list_users_for_search = User.objects.filter(
+                        profile__age__range=(start_age, end_age),
+                        profile__sex=client.profilesearch.sex,
+                        profile__city=client.profilesearch.city
+                    ).exclude(chat_id=client.chat_id).order_by('?')
+
+                    for user in list_users_for_search:
+                        if (user.chat_id not in client.profilesearch.viewed and
+                                user.chat_id not in client.profilesearch.unviewed):
+                            client.profilesearch.unviewed.append(user.chat_id)
+                    client.profilesearch.save()
+
+                get_next_search_profile(client)
+
+            except Exception as ex:
+                logging.error(ex)
 
 
 def process_name_step(message, user):
@@ -495,14 +554,12 @@ def callback_set_city(call):
             city_pk = call.data.split('_')[-1]
             if call.data.startswith('city_search'):
                 user.profilesearch.city = City.objects.get(pk=city_pk)
+                user.profilesearch.unviewed.clear()
                 text = '<b>Город собеседника установлен</b>\n'
             else:
                 user.profile.city = City.objects.get(pk=city_pk)
                 user.profilesearch.city = user.profile.city
                 text = '<b>Город установлен</b>\n'
-
-                if user.profile.is_registered:
-                    show_user_profile(call.message)
 
         user.profile.save()
         user.profilesearch.save()
@@ -635,6 +692,7 @@ def callback_change_profile_search(call):
             bot.answer_callback_query(call.id)
         if call.data.startswith('search_age_'):
             user.profilesearch.age = call.data.split('_')[-1]
+            user.profilesearch.unviewed.clear()
             user.profilesearch.save()
             text = get_user_profile_search(user)
             markup = gen_markup_for_profile_search()
@@ -644,6 +702,7 @@ def callback_change_profile_search(call):
             markup = gen_markup_for_sex_search()
         if call.data.startswith('search_sex_'):
             user.profilesearch.sex = call.data.split('_')[-1]
+            user.profilesearch.unviewed.clear()
             user.profilesearch.save()
             text = get_user_profile_search(user)
             markup = gen_markup_for_profile_search()
@@ -686,8 +745,3 @@ def callback_change_profile_search(call):
         )
     except Exception as ex:
         logging.error(ex)
-
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback_query(call):
-    pass
