@@ -1,7 +1,7 @@
 import functools
+import logging
 import os
 from difflib import SequenceMatcher
-import logging
 
 import telebot
 from telebot import types
