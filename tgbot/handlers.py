@@ -265,16 +265,6 @@ def get_next_search_profile(client):
         )
 
 
-@bot.message_handler(commands=['test'])
-def test_command(message):
-    bot.send_message(
-        chat_id=message.chat.id,
-        text="Ку-ку🙂",
-        parse_mode='HTML'
-    )
-    raise Exception('Something wrong!!!')
-
-
 @bot.message_handler(commands=['start'])
 @log
 def start_message(message):
