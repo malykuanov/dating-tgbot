@@ -1,3 +1,4 @@
+import functools
 import os
 from difflib import SequenceMatcher
 import logging
@@ -10,8 +11,25 @@ from django.conf import settings
 from .models import City, Profile, ProfileSearch, User
 
 bot = telebot.TeleBot(settings.TELEGRAM_TOKEN)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger()
 
 
+def log(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+            logger.exception(
+                f"Exception raised in {func.__name__}. exception: {str(e)}")
+            raise e
+
+    return wrapper
+
+
+@log
 def gen_markup_for_city(name, is_search):
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
@@ -30,6 +48,7 @@ def gen_markup_for_city(name, is_search):
     return markup
 
 
+@log
 def gen_markup_for_profile(user):
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
@@ -76,6 +95,7 @@ def gen_markup_for_profile(user):
     return markup
 
 
+@log
 def gen_markup_for_profile_search():
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(
@@ -94,13 +114,14 @@ def gen_markup_for_profile_search():
     return markup
 
 
+@log
 def gen_markup_for_age_search():
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
     age_range = [age for age in range(13, 55, 5)]
     for index in range(0, 8, 2):
-        first_diapason = f'{age_range[index]}-{age_range[index+1]}'
-        second_diapason = f'{age_range[index+1]}-{age_range[index + 2]}'
+        first_diapason = f'{age_range[index]}-{age_range[index + 1]}'
+        second_diapason = f'{age_range[index + 1]}-{age_range[index + 2]}'
         markup.add(
             types.InlineKeyboardButton(
                 text=first_diapason,
@@ -124,6 +145,7 @@ def gen_markup_for_age_search():
     return markup
 
 
+@log
 def gen_markup_for_sex_search():
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
@@ -140,6 +162,7 @@ def gen_markup_for_sex_search():
     return markup
 
 
+@log
 def gen_main_markup():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row_width = 2
@@ -154,6 +177,7 @@ def gen_main_markup():
     return markup
 
 
+@log
 def get_user_avatar(user):
     save_path = os.path.join(settings.MEDIA_ROOT, 'images/avatars/')
     file_name = f"{user.chat_id}.jpg"
@@ -164,6 +188,7 @@ def get_user_avatar(user):
         return avatar
 
 
+@log
 def get_user_profile(user):
     text = f'<b>👤Имя: </b>{user.profile.name}\n'
     text += f'<b>🔢Возраст: </b>{user.profile.age}\n'
@@ -187,6 +212,7 @@ def get_user_profile(user):
     )
 
 
+@log
 def get_user_profile_search(user):
     text = f'<i>Ваши настроки для поиска собеседника</i>: \n\n'
     text += f'<b>🔢Возраст: </b>{user.profilesearch.age}\n'
@@ -203,6 +229,7 @@ def get_user_profile_search(user):
     return text
 
 
+@log
 def get_next_search_profile(client):
     try:
         user_id = client.profilesearch.unviewed.pop()
@@ -236,58 +263,59 @@ def get_next_search_profile(client):
             text=text,
             parse_mode='HTML'
         )
-    except Exception as ex:
-        logging.error(ex)
 
 
 @bot.message_handler(commands=['test'])
 def test_command(message):
-    #text += f'<a href="tg://user?id={user.chat_id}"> ссылка </a>'
-    pass
+    bot.send_message(
+        chat_id=message.chat.id,
+        text="Ку-ку🙂",
+        parse_mode='HTML'
+    )
+    raise Exception('Something wrong!!!')
 
 
 @bot.message_handler(commands=['start'])
+@log
 def start_message(message):
-    try:
-        sticker_path = os.path.join(
-            settings.STATIC_ROOT, 'tgbot/images/welcome.webp'
+    sticker_path = os.path.join(
+        settings.STATIC_ROOT, 'tgbot/images/welcome.webp'
+    )
+    with open(sticker_path, 'rb') as sticker:
+        bot.send_sticker(message.chat.id, sticker.read())
+    user, created = User.objects.get_or_create(chat_id=message.chat.id)
+    if created or not user.profile.is_registered:
+        user.first_name = message.chat.first_name
+        user.username = message.chat.username
+        user.save()
+        profile, _ = Profile.objects.get_or_create(user=user)
+        profile_search, _ = ProfileSearch.objects.get_or_create(user=user)
+        text = '<b>Приветик☺</b>\n\n'
+        text += 'Чтобы начать знакомства, необходимо завести анкету.\n'
+
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton(
+            f"❤️Регистрация анкеты",
+            callback_data="profile_registration"
+        ))
+
+        bot.send_message(
+            chat_id=message.chat.id,
+            text=text,
+            reply_markup=markup,
+            parse_mode='HTML'
         )
-        with open(sticker_path, 'rb') as sticker:
-            bot.send_sticker(message.chat.id, sticker.read())
-        user, created = User.objects.get_or_create(chat_id=message.chat.id)
-        if created or not user.profile.is_registered:
-            user.first_name = message.chat.first_name
-            user.username = message.chat.username
-            user.save()
-            profile, _ = Profile.objects.get_or_create(user=user)
-            profile_search, _ = ProfileSearch.objects.get_or_create(user=user)
-            text = '<b>Приветик☺</b>\n\n'
-            text += 'Чтобы начать знакомства, необходимо завести анкету.\n'
-
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton(
-                f"❤️Регистрация анкеты",
-                callback_data="profile_registration"
-            ))
-
-            bot.send_message(
-                chat_id=message.chat.id,
-                text=text,
-                reply_markup=markup,
-                parse_mode='HTML'
-            )
-        else:
-            bot.send_message(
-                chat_id=message.chat.id,
-                text="Ку-ку🙂",
-                reply_markup=gen_main_markup(),
-                parse_mode='HTML'
-            )
-    except Exception as ex:
-        logging.error(str(ex))
+    else:
+        bot.send_message(
+            chat_id=message.chat.id,
+            text="Ку-ку🙂",
+            reply_markup=gen_main_markup(),
+            parse_mode='HTML'
+        )
 
 
 @bot.message_handler(commands=['profile'])
+@log
 def show_user_profile(message):
     try:
         user = User.objects.get(chat_id=message.chat.id)
@@ -303,11 +331,10 @@ def show_user_profile(message):
             chat_id=message.chat.id,
             text="Вы не завели анкету!\nВоспользуйтесь командой:\n/start"
         )
-    except Exception as ex:
-        logging.error(ex)
 
 
 @bot.message_handler(commands=['bug'])
+@log
 def delete_profile(message):
     text = '<b>Отправьте сообщение об ошибке администратору бота</b>\n'
     text += 'Укажите в какой момент времени и какая ошибка возникла'
@@ -320,6 +347,7 @@ def delete_profile(message):
 
 
 @bot.message_handler(content_types=['text'])
+@log
 def bot_message(message):
     if message.chat.type == 'private':
         if message.text == '😎Мой профиль':
@@ -333,154 +361,144 @@ def bot_message(message):
                 parse_mode='HTML'
             )
         if message.text == '🔍Поиск':
-            try:
-                client = User.objects.get(chat_id=message.chat.id)
-                if not client.profilesearch.unviewed:
-                    start_age, end_age = map(int, client.profilesearch.age.split('-'))
-                    list_users_for_search = User.objects.filter(
-                        profile__age__range=(start_age, end_age),
-                        profile__sex=client.profilesearch.sex,
-                        profile__city=client.profilesearch.city
-                    ).exclude(chat_id=client.chat_id).order_by('?')
+            client = User.objects.get(chat_id=message.chat.id)
+            if not client.profilesearch.unviewed:
+                start_age, end_age = map(
+                    int,
+                    client.profilesearch.age.split('-')
+                )
+                list_users_for_search = User.objects.filter(
+                    profile__age__range=(start_age, end_age),
+                    profile__sex=client.profilesearch.sex,
+                    profile__city=client.profilesearch.city
+                ).exclude(chat_id=client.chat_id).order_by('?')
 
-                    for user in list_users_for_search:
-                        if (user.chat_id not in client.profilesearch.viewed and
-                                user.chat_id not in client.profilesearch.unviewed):
-                            client.profilesearch.unviewed.append(user.chat_id)
-                    client.profilesearch.save()
+                for user in list_users_for_search:
+                    if (user.chat_id not in client.profilesearch.viewed and
+                            user.chat_id not in client.profilesearch.unviewed):
+                        client.profilesearch.unviewed.append(user.chat_id)
+                client.profilesearch.save()
 
-                get_next_search_profile(client)
-
-            except Exception as ex:
-                logging.error(ex)
+            get_next_search_profile(client)
 
 
+@log
 def process_name_step(message, user):
-    try:
-        name = message.text
-        if len(name) > 20:
-            bot.reply_to(
-                message=message,
-                text='Ваше имя слишком длинное, используйте до 20 сим.'
-            )
-            bot.register_next_step_handler(message, process_name_step, user)
-            return
-        user.profile.name = name
-        user.profile.save()
-        bot.send_message(chat_id=message.chat.id, text='Имя установлено!')
-        if user.profile.is_registered:
-            show_user_profile(message)
-        else:
-            message = bot.reply_to(message, 'Сколько вам лет?')
-            bot.register_next_step_handler(message, process_age_step, user)
-    except Exception as ex:
-        logging.error(ex)
+    name = message.text
+    if len(name) > 20:
+        bot.reply_to(
+            message=message,
+            text='Ваше имя слишком длинное, используйте до 20 сим.'
+        )
+        bot.register_next_step_handler(message, process_name_step, user)
+        return
+    user.profile.name = name
+    user.profile.save()
+    bot.send_message(chat_id=message.chat.id, text='Имя установлено!')
+    if user.profile.is_registered:
+        show_user_profile(message)
+    else:
+        message = bot.reply_to(message, 'Сколько вам лет?')
+        bot.register_next_step_handler(message, process_age_step, user)
 
 
+@log
 def process_age_step(message, user):
-    try:
-        age = message.text
-        if not age.isdigit() or not 13 <= int(age) <= 100:
-            message = bot.reply_to(
-                message=message,
-                text='Укажите возраст цифрами от 13 до 100'
-            )
-            bot.register_next_step_handler(message, process_age_step, user)
-            return
-        user.profile.age = age
-        user.profile.save()
-        bot.send_message(chat_id=message.chat.id, text='Возраст установлен!')
-        if user.profile.is_registered:
-            show_user_profile(message)
-        else:
-            markup = types.ReplyKeyboardMarkup(one_time_keyboard=True,
-                                               resize_keyboard=True)
-            markup.add('Мужчина', 'Женщина')
-            message = bot.reply_to(message, 'Укажите ваш пол',
-                                   reply_markup=markup)
-            bot.register_next_step_handler(message, process_sex_step, user)
-    except Exception as ex:
-        logging.error(ex)
+    age = message.text
+    if not age.isdigit() or not 13 <= int(age) <= 100:
+        message = bot.reply_to(
+            message=message,
+            text='Укажите возраст цифрами от 13 до 100'
+        )
+        bot.register_next_step_handler(message, process_age_step, user)
+        return
+    user.profile.age = age
+    user.profile.save()
+    bot.send_message(chat_id=message.chat.id, text='Возраст установлен!')
+    if user.profile.is_registered:
+        show_user_profile(message)
+    else:
+        markup = types.ReplyKeyboardMarkup(one_time_keyboard=True,
+                                           resize_keyboard=True)
+        markup.add('Мужчина', 'Женщина')
+        message = bot.reply_to(message, 'Укажите ваш пол',
+                               reply_markup=markup)
+        bot.register_next_step_handler(message, process_sex_step, user)
 
 
+@log
 def process_sex_step(message, user):
-    try:
-        sex = message.text
-        if sex == 'Мужчина':
-            user.profile.sex = 'M'
-            user.profilesearch.sex = 'F'
-        elif sex == 'Женщина':
-            user.profile.sex = 'F'
-            user.profilesearch.sex = 'M'
-        else:
-            message = bot.reply_to(
-                message=message,
-                text='Выберите пол из предложенных вариантов (Мужчина / Женщина)'
-            )
-            bot.register_next_step_handler(message, process_sex_step, user)
-            return
-        user.profile.save()
-        user.profilesearch.save()
-        if user.profile.is_registered:
-            bot.send_message(
-                chat_id=message.chat.id,
-                text='Пол установлен!',
-                reply_markup=gen_main_markup()
-            )
-        else:
-            bot.send_message(
-                chat_id=message.chat.id,
-                text='Пол установлен!',
-                reply_markup=types.ReplyKeyboardRemove()
-            )
-            message = bot.send_message(
-                chat_id=message.chat.id,
-                text='Укажите ваш город',
-                reply_markup=types.ReplyKeyboardRemove()
-            )
-            bot.register_next_step_handler(message, process_city_step)
-    except Exception as ex:
-        logging.error(ex)
-
-
-def process_city_step(message, is_search=False):
-    try:
-        city = message.text
-        text = '<b>Выберите населенный пункт:</b>\n'
-        text += '(в списке предложены н/п с численностью <u>более 1000 ч.</u>)\n\n'
+    sex = message.text
+    if sex == 'Мужчина':
+        user.profile.sex = 'M'
+        user.profilesearch.sex = 'F'
+    elif sex == 'Женщина':
+        user.profile.sex = 'F'
+        user.profilesearch.sex = 'M'
+    else:
+        message = bot.reply_to(
+            message=message,
+            text='Выберите пол из предложенных вариантов (Мужчина / Женщина)'
+        )
+        bot.register_next_step_handler(message, process_sex_step, user)
+        return
+    user.profile.save()
+    user.profilesearch.save()
+    if user.profile.is_registered:
         bot.send_message(
             chat_id=message.chat.id,
-            text=text,
-            reply_markup=gen_markup_for_city(city, is_search),
-            parse_mode='HTML'
+            text='Пол установлен!',
+            reply_markup=gen_main_markup()
         )
-    except Exception as ex:
-        logging.error(ex)
+    else:
+        bot.send_message(
+            chat_id=message.chat.id,
+            text='Пол установлен!',
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+        message = bot.send_message(
+            chat_id=message.chat.id,
+            text='Укажите ваш город',
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+        bot.register_next_step_handler(message, process_city_step)
 
 
+@log
+def process_city_step(message, is_search=False):
+    city = message.text
+    text = '<b>Выберите населенный пункт:</b>\n'
+    text += '(в списке предложены н/п с численностью <u>более 1000 ч.</u>)\n\n'
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=text,
+        reply_markup=gen_markup_for_city(city, is_search),
+        parse_mode='HTML'
+    )
+
+
+@log
 def process_description_step(message, user):
-    try:
-        description = message.text
-        if len(description) > 400:
-            message = bot.reply_to(
-                message=message,
-                text='Слишком длинное описание, до 400 сим.'
-            )
-            bot.register_next_step_handler(message, process_description_step,
-                                           user)
-            return
-        user.profile.description = description
-        user.profile.save()
-        bot.send_message(chat_id=message.chat.id, text='Описание установлено!')
-        if user.profile.is_registered:
-            show_user_profile(message)
-        else:
-            message = bot.reply_to(message, 'Пришлите ваше фото')
-            bot.register_next_step_handler(message, process_photo_step, user)
-    except Exception as ex:
-        logging.error(ex)
+    description = message.text
+    if len(description) > 400:
+        message = bot.reply_to(
+            message=message,
+            text='Слишком длинное описание, до 400 сим.'
+        )
+        bot.register_next_step_handler(message, process_description_step,
+                                       user)
+        return
+    user.profile.description = description
+    user.profile.save()
+    bot.send_message(chat_id=message.chat.id, text='Описание установлено!')
+    if user.profile.is_registered:
+        show_user_profile(message)
+    else:
+        message = bot.reply_to(message, 'Пришлите ваше фото')
+        bot.register_next_step_handler(message, process_photo_step, user)
 
 
+@log
 def process_photo_step(message, user):
     try:
         file_id = message.photo[-1].file_id
@@ -515,76 +533,70 @@ def process_photo_step(message, user):
             text='Поддерживаемый формат: PNG/JPG\n(compress/сжатое)'
         )
         bot.register_next_step_handler(message, process_photo_step, user)
-    except Exception as ex:
-        logging.error(ex)
 
 
+@log
 def process_bug_step(message):
-    try:
-        bug = message.text
-        text = '<b>Спасибо за информацию👍</b>\n'
-        text += 'Наша команда проверит информацию и свяжется с вами!'
-        bot.reply_to(
-            message=message,
-            text=text,
-            parse_mode='HTML'
-        )
+    bug = message.text
+    text = '<b>Спасибо за информацию👍</b>\n'
+    text += 'Наша команда проверит информацию и свяжется с вами!'
+    bot.reply_to(
+        message=message,
+        text=text,
+        parse_mode='HTML'
+    )
 
-        logging.warning(f'BUG from {message.chat.id}: {bug}')
-    except Exception as ex:
-        logging.error(ex)
+    logging.warning(f'BUG from {message.chat.id}: {bug}')
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('city_'))
+@log
 def callback_set_city(call):
-    try:
-        bot.edit_message_reply_markup(call.from_user.id,
-                                      call.message.message_id)
+    bot.edit_message_reply_markup(call.from_user.id,
+                                  call.message.message_id)
 
-        user = User.objects.get(chat_id=call.from_user.id)
-        text = ""
+    user = User.objects.get(chat_id=call.from_user.id)
+    text = ""
 
-        if call.data == 'city_empty':
-            text = 'Пожалуйста, <b>свяжитесь с администратором бота</b>\n'
-            text += 'Для этого воспользутей командой /bug и сообщите о проблеме'
-            if user.profile.city is None:
-                user.profile.city = City.objects.get(name='Город не установлен')
-                user.profilesearch.city = user.profile.city
+    if call.data == 'city_empty':
+        text = 'Пожалуйста, <b>свяжитесь с администратором бота</b>\n'
+        text += 'Для этого воспользутей командой /bug и сообщите о проблеме'
+        if user.profile.city is None:
+            user.profile.city = City.objects.get(
+                name='Город не установлен')
+            user.profilesearch.city = user.profile.city
+    else:
+        city_pk = call.data.split('_')[-1]
+        if call.data.startswith('city_search'):
+            user.profilesearch.city = City.objects.get(pk=city_pk)
+            user.profilesearch.unviewed.clear()
+            text = '<b>Город собеседника установлен</b>\n'
         else:
-            city_pk = call.data.split('_')[-1]
-            if call.data.startswith('city_search'):
-                user.profilesearch.city = City.objects.get(pk=city_pk)
-                user.profilesearch.unviewed.clear()
-                text = '<b>Город собеседника установлен</b>\n'
-            else:
-                user.profile.city = City.objects.get(pk=city_pk)
-                user.profilesearch.city = user.profile.city
-                text = '<b>Город установлен</b>\n'
+            user.profile.city = City.objects.get(pk=city_pk)
+            user.profilesearch.city = user.profile.city
+            text = '<b>Город установлен</b>\n'
 
-        user.profile.save()
-        user.profilesearch.save()
+    user.profile.save()
+    user.profilesearch.save()
 
-        bot.edit_message_text(
+    bot.edit_message_text(
+        chat_id=call.from_user.id,
+        message_id=call.message.message_id,
+        text=text,
+        parse_mode='HTML'
+    )
+    bot.answer_callback_query(call.id)
+
+    if not user.profile.is_registered:
+        message = bot.send_message(
             chat_id=call.from_user.id,
-            message_id=call.message.message_id,
-            text=text,
-            parse_mode='HTML'
+            text='Укажите описание о себе до 400 сим.'
         )
-        bot.answer_callback_query(call.id)
-
-        if not user.profile.is_registered:
-            message = bot.send_message(
-                chat_id=call.from_user.id,
-                text='Укажите описание о себе до 400 сим.'
-            )
-            bot.register_next_step_handler(message, process_description_step,
-                                           user)
-
-    except Exception as ex:
-        logging.error(ex)
+        bot.register_next_step_handler(message, process_description_step, user)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('profile_'))
+@log
 def callback_change_profile(call):
     try:
         bot.edit_message_reply_markup(
@@ -675,14 +687,12 @@ def callback_change_profile(call):
             message_id=call.message.message_id,
             text="Вы не завели анкету!\nВоспользуйтесь командой:\n/start"
         )
-    except Exception as ex:
-        logging.error(ex)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('search_'))
+@log
 def callback_change_profile_search(call):
     try:
-
         user = User.objects.get(chat_id=call.from_user.id)
         text = markup = None
 
@@ -743,5 +753,3 @@ def callback_change_profile_search(call):
             message_id=call.message.message_id,
             text="Вы не завели анкету!\nВоспользуйтесь командой:\n/start"
         )
-    except Exception as ex:
-        logging.error(ex)
