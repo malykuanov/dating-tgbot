@@ -38,11 +38,11 @@ def gen_markup_for_city(name, is_search):
         if SequenceMatcher(None, name, city.name).ratio() > 0.8:
             callback = 'search_' if is_search else ''
             markup.add(types.InlineKeyboardButton(
-                f"{city.name}, {city.region}",
+                text=f"{city.name}, {city.region}",
                 callback_data=f"city_{callback}{city.pk}"
             ))
     markup.add(types.InlineKeyboardButton(
-        f"🤷🏻‍♂️Города нет в списке",
+        text="🤷🏻‍♂️Города нет в списке",
         callback_data="city_empty"
     ))
     return markup
@@ -54,31 +54,31 @@ def gen_markup_for_profile(user):
     markup.row_width = 2
     markup.add(
         types.InlineKeyboardButton(
-            f"👤Имя",
+            text="👤Имя",
             callback_data="profile_edit_name"
         ),
         types.InlineKeyboardButton(
-            f"🔢Возраст",
+            text="🔢Возраст",
             callback_data="profile_edit_age"
         )
     )
     markup.add(
         types.InlineKeyboardButton(
-            f"🚹Пол",
+            text="🚹Пол",
             callback_data="profile_edit_sex"
         ),
         types.InlineKeyboardButton(
-            f"🏠Город",
+            text="🏠Город",
             callback_data="profile_edit_city"
         )
     )
     markup.add(
         types.InlineKeyboardButton(
-            f"🖌️Описание",
+            text="🖌️Описание",
             callback_data="profile_edit_description"
         ),
         types.InlineKeyboardButton(
-            f"🖼Фото",
+            text="🖼Фото",
             callback_data="profile_edit_avatar"
         )
     )
@@ -99,15 +99,15 @@ def gen_markup_for_profile(user):
 def gen_markup_for_profile_search():
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(
-        f"Изменить возраст",
+        text="Изменить возраст",
         callback_data="search_age"
     ))
     markup.add(types.InlineKeyboardButton(
-        f"Изменить пол",
+        text="Изменить пол",
         callback_data="search_sex"
     ))
     markup.add(types.InlineKeyboardButton(
-        f"Изменить город",
+        text="Изменить город",
         callback_data="search_city"
     ))
 
@@ -134,12 +134,12 @@ def gen_markup_for_age_search():
         )
     markup.add(
         types.InlineKeyboardButton(
-            text=f'50-100',
-            callback_data=f'search_age_50-100'
+            text='50-100',
+            callback_data='search_age_50-100'
         ),
         types.InlineKeyboardButton(
             text='Любой возраст',
-            callback_data=f'search_age_13-100'
+            callback_data='search_age_13-100'
         )
     )
     return markup
@@ -151,7 +151,7 @@ def gen_markup_for_sex_search():
     markup.row_width = 2
     markup.add(
         types.InlineKeyboardButton(
-            text=f'🕺🏻',
+            text='🕺🏻',
             callback_data=f'search_sex_M'
         ),
         types.InlineKeyboardButton(
@@ -167,11 +167,11 @@ def gen_main_markup():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row_width = 2
     markup.add(
-        types.KeyboardButton(f"🔍Поиск"),
-        types.KeyboardButton(f"⚙Настройки поиска")
+        types.KeyboardButton("🔍Поиск"),
+        types.KeyboardButton("⚙Настройки поиска")
     )
     markup.add(
-        types.KeyboardButton(f"😎Мой профиль")
+        types.KeyboardButton("😎Мой профиль")
     )
 
     return markup
@@ -214,7 +214,7 @@ def get_user_profile(user):
 
 @log
 def get_user_profile_search(user):
-    text = f'<i>Ваши настроки для поиска собеседника</i>: \n\n'
+    text = '<i>Ваши настроки для поиска собеседника</i>: \n\n'
     text += f'<b>🔢Возраст: </b>{user.profilesearch.age}\n'
     if user.profilesearch.sex == 'M':
         text += f'<b>🚹Пол: </b> Мужчина\n'
@@ -285,7 +285,7 @@ def start_message(message):
 
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(
-            f"❤️Регистрация анкеты",
+            text="❤️Регистрация анкеты",
             callback_data="profile_registration"
         ))
 
@@ -316,7 +316,7 @@ def show_user_profile(message):
                 chat_id=message.chat.id,
                 text="Вы не завершили регистрацию!\nВоспользуйтесь командой:\n/start"
             )
-    except User.DoesNotExist as ex:
+    except User.DoesNotExist:
         bot.send_message(
             chat_id=message.chat.id,
             text="Вы не завели анкету!\nВоспользуйтесь командой:\n/start"
@@ -411,8 +411,11 @@ def process_age_step(message, user):
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True,
                                            resize_keyboard=True)
         markup.add('Мужчина', 'Женщина')
-        message = bot.reply_to(message, 'Укажите ваш пол',
-                               reply_markup=markup)
+        message = bot.reply_to(
+            message=message,
+            text='Укажите ваш пол',
+            reply_markup=markup
+        )
         bot.register_next_step_handler(message, process_sex_step, user)
 
 
@@ -542,8 +545,7 @@ def process_bug_step(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('city_'))
 @log
 def callback_set_city(call):
-    bot.edit_message_reply_markup(call.from_user.id,
-                                  call.message.message_id)
+    bot.edit_message_reply_markup(call.from_user.id, call.message.message_id)
 
     user = User.objects.get(chat_id=call.from_user.id)
     text = ""
