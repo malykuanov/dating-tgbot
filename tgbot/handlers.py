@@ -1,3 +1,5 @@
+"""handlers.py - Перехватчик сообщений и команд от пользователей ТГ бота
+"""
 import functools
 import logging
 import os
@@ -16,6 +18,7 @@ logger = logging.getLogger()
 
 
 def log(func):
+    """Декоратор для логирования исключений кода"""
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -31,6 +34,13 @@ def log(func):
 
 @log
 def gen_markup_for_city(name, is_search):
+    """Генерация клавиатуры для списка городов
+
+    :param str name: Наименование города от пользователя
+    :param bool is_search: Генерация для профиля или поиска пользователей
+    :return: Inline-клавиатура
+    :rtype: InlineKeyboardMarkup
+    """
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
     cities = City.objects.all()
@@ -50,6 +60,12 @@ def gen_markup_for_city(name, is_search):
 
 @log
 def gen_markup_for_profile(user):
+    """Генерация клавиатуры для профиля пользователя
+
+    :param User user: Текущий пользователь бота
+    :return: Inline-клавиатура
+    :rtype: InlineKeyboardMarkup
+    """
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
     markup.add(
@@ -97,6 +113,11 @@ def gen_markup_for_profile(user):
 
 @log
 def gen_markup_for_profile_search():
+    """Генерация клавиатуры для настройки параметров поиска пользователей
+
+    :return: Inline-клавиатура
+    :rtype: InlineKeyboardMarkup
+    """
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(
         text="Изменить возраст",
@@ -110,15 +131,19 @@ def gen_markup_for_profile_search():
         text="Изменить город",
         callback_data="search_city"
     ))
-
     return markup
 
 
 @log
 def gen_markup_for_age_search():
+    """Генерация клавиатуры для диапазона возрастов искомых пользователей
+
+    :return: Inline-клавиатура
+    :rtype: InlineKeyboardMarkup
+    """
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
-    age_range = [age for age in range(13, 55, 5)]
+    age_range = list(range(13, 55, 5))
     for index in range(0, 8, 2):
         first_diapason = f'{age_range[index]}-{age_range[index + 1]}'
         second_diapason = f'{age_range[index + 1]}-{age_range[index + 2]}'
@@ -147,16 +172,21 @@ def gen_markup_for_age_search():
 
 @log
 def gen_markup_for_sex_search():
+    """Генерация клавиатуры для выбора пола искомых пользователей
+
+    :return: Inline-клавиатура
+    :rtype: InlineKeyboardMarkup
+    """
     markup = types.InlineKeyboardMarkup()
     markup.row_width = 2
     markup.add(
         types.InlineKeyboardButton(
             text='🕺🏻',
-            callback_data=f'search_sex_M'
+            callback_data='search_sex_M'
         ),
         types.InlineKeyboardButton(
             text='💃🏻',
-            callback_data=f'search_sex_F'
+            callback_data='search_sex_F'
         )
     )
     return markup
@@ -164,6 +194,11 @@ def gen_markup_for_sex_search():
 
 @log
 def gen_main_markup():
+    """Генерация основной клавиатуры
+
+    :return: Reply-клавиатура
+    :rtype: ReplyKeyboardMarkup
+    """
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.row_width = 2
     markup.add(
@@ -173,12 +208,17 @@ def gen_main_markup():
     markup.add(
         types.KeyboardButton("😎Мой профиль")
     )
-
     return markup
 
 
 @log
 def get_user_avatar(user):
+    """Получение изображения профиля текущего пользователя
+
+    :param User user: Текущий пользователь бота
+    :return: Аватар пользователя
+    :rtype: bytes
+    """
     save_path = os.path.join(settings.MEDIA_ROOT, 'images/avatars/')
     file_name = f"{user.chat_id}.jpg"
     complete_name = os.path.join(save_path, file_name)
@@ -190,14 +230,18 @@ def get_user_avatar(user):
 
 @log
 def get_user_profile(user):
+    """Получение профиля текущего пользователя
+
+    :param User user: Текущий пользователь бота
+    """
     text = f'<b>👤Имя: </b>{user.profile.name}\n'
     text += f'<b>🔢Возраст: </b>{user.profile.age}\n'
     if user.profile.sex == 'M':
-        text += f'<b>🚹Пол: </b> Мужчина\n'
+        text += '<b>🚹Пол: </b> Мужчина\n'
     else:
-        text += f'<b>🚺Пол: </b> Женщина\n'
+        text += '<b>🚺Пол: </b> Женщина\n'
     if user.profile.city is None:
-        text += f'<b>🏠Город: </b>Не установлен\n'
+        text += '<b>🏠Город: </b>Не установлен\n'
     else:
         text += f'<b>🏠Город: </b>{user.profile.city}\n'
     text += f'<b>🖌️Описание: </b>{user.profile.description}\n\n'
@@ -214,14 +258,20 @@ def get_user_profile(user):
 
 @log
 def get_user_profile_search(user):
-    text = '<i>Ваши настроки для поиска собеседника</i>: \n\n'
+    """Получение настроек для поиска пользователей
+
+    :param User user: Текущий пользователь бота
+    :return: Список текущих настроек для поиска пользователей
+    :rtype: str
+    """
+    text = '<i>Ваши настройки для поиска собеседника</i>: \n\n'
     text += f'<b>🔢Возраст: </b>{user.profilesearch.age}\n'
     if user.profilesearch.sex == 'M':
-        text += f'<b>🚹Пол: </b> Мужчина\n'
+        text += '<b>🚹Пол: </b> Мужчина\n'
     else:
-        text += f'<b>🚺Пол: </b> Женщина\n'
+        text += '<b>🚺Пол: </b> Женщина\n'
     if user.profile.city is None:
-        text += f'<b>🏠Город: </b>Не установлен\n'
+        text += '<b>🏠Город: </b>Не установлен\n'
     else:
         text += f'<b>🏠Город: </b>{user.profilesearch.city}\n\n'
     text += 'Вы можете изменить настройки поиска: '
@@ -231,6 +281,11 @@ def get_user_profile_search(user):
 
 @log
 def get_next_search_profile(client):
+    """Получение очередного собеседника в соответствии с настройками поиска
+
+    :param User client: Текущий пользователь бота
+    :raise IndexError: Отсутствие пользователей согласно настройкам поиска
+    """
     try:
         user_id = client.profilesearch.unviewed.pop()
         user = User.objects.get(chat_id=user_id)
@@ -268,6 +323,13 @@ def get_next_search_profile(client):
 @bot.message_handler(commands=['start'])
 @log
 def start_message(message):
+    """Команда /start от пользователя
+
+    При получении команды начинается регистрация текущего пользователя.
+    При завершенной регистрации команда отправляет приветствие.
+
+    :param Message message: Сообщение от пользователя
+    """
     sticker_path = os.path.join(
         settings.STATIC_ROOT, 'tgbot/images/welcome.webp'
     )
@@ -278,8 +340,8 @@ def start_message(message):
         user.first_name = message.chat.first_name
         user.username = message.chat.username
         user.save()
-        profile, _ = Profile.objects.get_or_create(user=user)
-        profile_search, _ = ProfileSearch.objects.get_or_create(user=user)
+        Profile.objects.create(user=user)
+        ProfileSearch.objects.create(user=user)
         text = '<b>Приветик☺</b>\n\n'
         text += 'Чтобы начать знакомства, необходимо завести анкету.\n'
 
@@ -307,6 +369,14 @@ def start_message(message):
 @bot.message_handler(commands=['profile'])
 @log
 def show_user_profile(message):
+    """Команда /profile от пользователя
+
+    При получении команды отображается текущий профиль пользователя.
+    При отсутствии или незаконченной регистрации соответствующее уведомление.
+
+    :param Message message: Сообщение от пользователя
+    :raise User.DoesNotExist: Если пользователь не начинал регистрацию
+    """
     try:
         user = User.objects.get(chat_id=message.chat.id)
         if user.profile.is_registered:
@@ -314,7 +384,8 @@ def show_user_profile(message):
         else:
             bot.send_message(
                 chat_id=message.chat.id,
-                text="Вы не завершили регистрацию!\nВоспользуйтесь командой:\n/start"
+                text=("Вы не завершили регистрацию!\n"
+                      "Воспользуйтесь командой:\n/start")
             )
     except User.DoesNotExist:
         bot.send_message(
@@ -325,7 +396,14 @@ def show_user_profile(message):
 
 @bot.message_handler(commands=['bug'])
 @log
-def delete_profile(message):
+def send_bug_message(message):
+    """Команда /bug от пользователя
+
+    Пользователь отправляет сообщение о некорректной работе бота.
+    Сообщение логируется в консоль и файл
+
+    :param Message message: Сообщение от пользователя
+    """
     text = '<b>Отправьте сообщение об ошибке администратору бота</b>\n'
     text += 'Укажите в какой момент времени и какая ошибка возникла'
     message = bot.send_message(
@@ -339,6 +417,14 @@ def delete_profile(message):
 @bot.message_handler(content_types=['text'])
 @log
 def bot_message(message):
+    """Сообщения с основной клавиатуры бота
+
+    -Запрос текущего профиля
+    -Настройки поиска пользователей
+    -Поиск следующего пользователя в соответствии с настройками поиска
+
+    :param Message message: Сообщение от пользователя
+    """
     if message.chat.type == 'private':
         if message.text == '😎Мой профиль':
             show_user_profile(message)
@@ -374,6 +460,11 @@ def bot_message(message):
 
 @log
 def process_name_step(message, user):
+    """Шаг в цепочке регистрации пользователя (указание имени)
+
+    :param Message message: Сообщение от пользователя
+    :param User user: Текущий пользователь
+    """
     name = message.text
     if len(name) > 20:
         bot.reply_to(
@@ -394,6 +485,11 @@ def process_name_step(message, user):
 
 @log
 def process_age_step(message, user):
+    """Шаг в цепочке регистрации пользователя (указание возраста)
+
+    :param Message message: Сообщение от пользователя
+    :param User user: Текущий пользователь
+    """
     age = message.text
     if not age.isdigit() or not 13 <= int(age) <= 100:
         message = bot.reply_to(
@@ -421,6 +517,11 @@ def process_age_step(message, user):
 
 @log
 def process_sex_step(message, user):
+    """Шаг в цепочке регистрации пользователя (указание пола)
+
+    :param Message message: Сообщение от пользователя
+    :param User user: Текущий пользователь
+    """
     sex = message.text
     if sex == 'Мужчина':
         user.profile.sex = 'M'
@@ -459,6 +560,15 @@ def process_sex_step(message, user):
 
 @log
 def process_city_step(message, is_search=False):
+    """Шаг в цепочке регистрации пользователя (указание города)
+
+    Город выбирается для двух этапов:
+    - при регистрации пользователя (по умолчанию)
+    - при выборе города собеседника (is_search)
+
+    :param Message message: Сообщение от пользователя
+    :param bool is_search: Выбор города при регистрации или в настройках поиска
+    """
     city = message.text
     text = '<b>Выберите населенный пункт:</b>\n'
     text += '(в списке предложены н/п с численностью <u>более 1000 ч.</u>)\n\n'
@@ -472,6 +582,11 @@ def process_city_step(message, is_search=False):
 
 @log
 def process_description_step(message, user):
+    """Шаг в цепочке регистрации пользователя (указание описания профиля)
+
+    :param Message message: Сообщение от пользователя
+    :param User user: Текущий пользователь
+    """
     description = message.text
     if len(description) > 400:
         message = bot.reply_to(
@@ -493,6 +608,12 @@ def process_description_step(message, user):
 
 @log
 def process_photo_step(message, user):
+    """Шаг в цепочке регистрации пользователя (загрузка фото профиля)
+
+    :param Message message: Сообщение от пользователя
+    :param User user: Текущий пользователь
+    :raise TypeError: В случае, если в ТГ отправляется не фото
+    """
     try:
         file_id = message.photo[-1].file_id
         file = bot.get_file(file_id)
@@ -530,6 +651,10 @@ def process_photo_step(message, user):
 
 @log
 def process_bug_step(message):
+    """Логирование сообщения об ошибке в боте от пользователя
+
+    :param Message message: Сообщение от пользователя
+    """
     bug = message.text
     text = '<b>Спасибо за информацию👍</b>\n'
     text += 'Наша команда проверит информацию и свяжется с вами!'
@@ -545,11 +670,13 @@ def process_bug_step(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('city_'))
 @log
 def callback_set_city(call):
+    """Установка города в профиль пользователя или в настройки поиска
+
+    :param call: Callback от inline-клавиши
+    """
     bot.edit_message_reply_markup(call.from_user.id, call.message.message_id)
 
     user = User.objects.get(chat_id=call.from_user.id)
-    text = ""
-
     if call.data == 'city_empty':
         text = 'Пожалуйста, <b>свяжитесь с администратором бота</b>\n'
         text += 'Для этого воспользутей командой /bug и сообщите о проблеме'
@@ -590,12 +717,20 @@ def callback_set_city(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('profile_'))
 @log
 def callback_change_profile(call):
+    """Изменение параметров текущего профиля пользователя
+
+    Происходит переход к шагу цепочки параметра профиля как при регистрации.
+    Дальнейший переход по цепочке не происходит (is_registered = True)
+
+    :param call: Callback от inline-клавиши
+    :raise User.DoesNotExist: Доступ в профиль при отсутствии регистрации
+    """
     try:
         bot.edit_message_reply_markup(
             chat_id=call.from_user.id,
             message_id=call.message.message_id
         )
-        text = ""
+
         user = User.objects.get(chat_id=call.from_user.id)
 
         if call.data == 'profile_registration':
@@ -684,6 +819,11 @@ def callback_change_profile(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('search_'))
 @log
 def callback_change_profile_search(call):
+    """Изменение параметров поиска профилей пользователей
+
+    :param call: Callback от inline-клавиши
+    :raise User.DoesNotExist: Доступ к настройкам при отсутствии регистрации
+    """
     try:
         user = User.objects.get(chat_id=call.from_user.id)
         text = markup = None
